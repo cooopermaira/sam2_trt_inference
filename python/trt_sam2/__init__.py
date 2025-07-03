@@ -43,9 +43,12 @@ class SAM2Image:
             decoder_batch_limit
         )
         if not self.instance:
-            raise RuntimeError("Failed to create SAM2Image instance")
-
+            raise RuntimeError("Failed to create SAM2Image instance")        
+        
         # Define argument and return types for the shared library functions
+        self.lib.destroy_sam2image.argtypes = [ctypes.c_void_p]
+        self.lib.destroy_sam2image.restype = None
+        
         self.lib.sam2image_set_image.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ubyte), ctypes.c_int, ctypes.c_int]
         self.lib.sam2image_set_image.restype = None
 
@@ -66,6 +69,9 @@ class SAM2Image:
         ]
         self.lib.sam2image_get_max_entropy.restype = None
 
+    def destroy(self) :
+        self.lib.destroy_sam2image(self.instance)
+        
     def set_image(self, image: np.ndarray):
         """Set the input image for processing."""
         if image.dtype != np.uint8:
