@@ -39,6 +39,15 @@ extern "C"
             encoder_path, decoder_path, encoder_input_size, precision, decoder_batch_limit));
         return static_cast<void*>(sam2);
     }
+
+    // Destroy SAM2Image
+    void destroy_sam2image(void* instance)
+    {
+       if (instance) {
+	 delete static_cast<std::shared_ptr<SAM2Image>*>(instance);
+       }
+    }
+  
     // Set image in SAM2Image
     void sam2image_set_image(void* instance, const unsigned char* image_data, int width, int height)
     {
