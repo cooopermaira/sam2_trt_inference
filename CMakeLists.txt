@@ -27,10 +27,10 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath=\$ORIGIN")
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Include header directories
-include_directories(/usr/local/cuda/include include)
+include_directories(/usr/local/cuda/include include /home/max/Documents/TensorRT-8.6.1.6/include)
 
 # Link directories
-link_directories(/usr/local/cuda/lib64)
+link_directories(/usr/local/cuda/lib64 /home/max/Documents/TensorRT-8.6.1.6/lib)
 
 # Dependencies
 find_package(CUDAToolkit REQUIRED)

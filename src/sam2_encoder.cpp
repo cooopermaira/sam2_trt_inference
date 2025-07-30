@@ -43,14 +43,14 @@ SAM2ImageEncoder::SAM2ImageEncoder(const std::string& onnx_path,
 
     GetInputDetails();
 
-    AllocateGPUMemory();
+    //AllocateGPUMemory();
 }
 
 SAM2ImageEncoder::~SAM2ImageEncoder()
 {
 }
 
-void SAM2ImageEncoder::AllocateGPUMemory()
+void SAM2ImageEncoder::AllocateGPUMemory(bool _CPU)
 {
     const auto input_dims = trt_encoder_->getBindingDimensions(0);
     const auto embed_dims = trt_encoder_->getBindingDimensions(1);
@@ -67,15 +67,18 @@ void SAM2ImageEncoder::AllocateGPUMemory()
         embed_dims.d + 1, embed_dims.d + embed_dims.nbDims, 1, std::multiplies<int>());
 
     // CPU part
-    feats_0_data = cuda_utils::make_unique_host<float[]>(feats_0_size_, cudaHostAllocPortable);
-    feats_1_data = cuda_utils::make_unique_host<float[]>(feats_1_size_, cudaHostAllocPortable);
-    embed_data = cuda_utils::make_unique_host<float[]>(embed_size_, cudaHostAllocPortable);
+    if (_CPU) {
+        feats_0_data = cuda_utils::make_unique_host<float[]>(feats_0_size_, cudaHostAllocPortable);
+        feats_1_data = cuda_utils::make_unique_host<float[]>(feats_1_size_, cudaHostAllocPortable);
+        embed_data = cuda_utils::make_unique_host<float[]>(embed_size_, cudaHostAllocPortable);
+    }
 
     // GPU part
     input_d_ = cuda_utils::make_unique<float[]>(input_size);
     feats_0_data_d_ = cuda_utils::make_unique<float[]>(feats_0_size_);
     feats_1_data_d_ = cuda_utils::make_unique<float[]>(feats_1_size_);
     embed_data_d_ = cuda_utils::make_unique<float[]>(embed_size_);
+    int k = 0;
 }
 
 void SAM2ImageEncoder::EncodeImage(const std::vector<cv::Mat>& images)
@@ -95,6 +98,7 @@ void SAM2ImageEncoder::GetInputDetails()
     batch_size_ = input_dims.d[0];
     input_height_ = input_dims.d[2];
     input_width_ = input_dims.d[3];
+
 }
 
 cv::Mat SAM2ImageEncoder::Preprocess(const std::vector<cv::Mat>& images)
@@ -149,7 +153,6 @@ bool SAM2ImageEncoder::Infer(const cv::Mat& input_tensor)
         feats_1_data_d_.get(),
         feats_0_data_d_.get(),
     };
-
     // Execute inference
     bool success = trt_encoder_->enqueueV2(buffers.data(), *stream_, nullptr);
     if (!success)
@@ -158,25 +161,18 @@ bool SAM2ImageEncoder::Infer(const cv::Mat& input_tensor)
         return false;
     }
 
-    // Copy output to CPU
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(feats_0_data.get(),
-                                     feats_0_data_d_.get(),
-                                     feats_0_size_ * sizeof(float),
-                                     cudaMemcpyDeviceToHost,
-                                     *stream_));
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(feats_1_data.get(),
-                                     feats_1_data_d_.get(),
-                                     feats_1_size_ * sizeof(float),
-                                     cudaMemcpyDeviceToHost,
-                                     *stream_));
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(embed_data.get(),
-                                     embed_data_d_.get(),
-                                     embed_size_ * sizeof(float),
-                                     cudaMemcpyDeviceToHost,
-                                     *stream_));
-
     // Synchronize CUDA stream
     CHECK_CUDA_ERROR(cudaStreamSynchronize(*stream_));
 
     return true;
 }
+
+bool SAM2ImageEncoder::Infer(std::vector<void*> &_buffers) {
+    // Execute inference
+
+    //CHECK_CUDA_ERROR(cudaStreamSynchronize(*stream_));
+    bool success = trt_encoder_->enqueueV2(_buffers.data(), *stream_, nullptr);
+
+    return success;
+}
+
